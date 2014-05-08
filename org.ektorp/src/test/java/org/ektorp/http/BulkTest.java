@@ -1,5 +1,6 @@
 package org.ektorp.http;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -21,6 +22,9 @@ import org.slf4j.LoggerFactory;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.util.*;
+
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /* throws:
 Exception in thread "main" org.ektorp.DbAccessException: java.net.SocketException: Connection reset
@@ -133,6 +137,26 @@ public class BulkTest {
             httpClient.shutdown();
         }
     }
+
+	// TODO : move this test to an other test class
+	// TODO : add assertion on whether on not the content was fully consumed
+	@Test
+	public void shouldConsumeTheFullReponseContentOnQueryViewWithType() {
+		ViewQuery query = new ViewQuery().allDocs().includeDocs(true);
+		List<TestDocumentBean> result = stdCouchDbConnector.queryView(query, TestDocumentBean.class);
+		assertNotNull(result);
+		LOG.info("result.size() = " + result.size());
+	}
+
+	// TODO : move this test to an other test class
+	// TODO : add assertion on whether on not the content was fully consumed
+	@Test
+	public void shouldConsumeTheFullReponseContentOnQueryViewWithoutType() {
+		ViewQuery query = new ViewQuery().allDocs().includeDocs(true);
+		ViewResult result = stdCouchDbConnector.queryView(query);
+		assertNotNull(result);
+		LOG.info("result.size() = " + result.getRows().size());
+	}
 
     @Test
     public void shouldDoUpdateInBulkWithOneSmallInputStreamWithStdCouchDbConnector() throws Exception {
@@ -313,6 +337,7 @@ public class BulkTest {
     }
 
 
+	@JsonIgnoreProperties(ignoreUnknown = true)
     public static class TestDocumentBean extends CouchDbDocument {
         private String lastName;
         private String firstName;
