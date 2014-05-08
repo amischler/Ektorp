@@ -128,8 +128,24 @@ public class StdHttpResponse implements HttpResponse {
 
 		private boolean closed = false;
 
+		private boolean eof = false;
+
 		private ConnectionReleasingInputStream(InputStream src) {
 			super(src);
+		}
+
+		@Override
+		public int read() throws IOException {
+			int read = super.read();
+			eof = (read == -1);
+			return read;
+		}
+
+		@Override
+		public int read(byte b[], int off, int len) throws IOException {
+			int read = super.read(b, off, len);
+			eof = (read < len);
+			return read;
 		}
 
 		@Override
@@ -142,11 +158,11 @@ public class StdHttpResponse implements HttpResponse {
 		}
 
 		public void consumeContent() throws IOException {
-			if (!closed) {
-				if (in != null) {
-					// this will consume the content
-					int unconsumedLength = IOUtils.copy(in, NullOutputStream.NULL_OUTPUT_STREAM);
-					if (unconsumedLength > 0) {
+			if (!eof) {
+				if (!closed) {
+					if (in != null) {
+						// this will consume the content
+						int unconsumedLength = IOUtils.copy(in, NullOutputStream.NULL_OUTPUT_STREAM);
 						String warningMessage = "content was not consumed entirely by the application. Make sure you consume the content entirely before closing it : " + unconsumedLength;
 						LOG.warn(warningMessage, new RuntimeException(warningMessage));
 					}
