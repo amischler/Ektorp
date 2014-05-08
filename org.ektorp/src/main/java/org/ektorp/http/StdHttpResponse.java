@@ -31,8 +31,12 @@ public class StdHttpResponse implements HttpResponse {
 	private final String requestURI;
 	private final HttpUriRequest httpRequest;
 	private final String revision;
-	
-	private boolean closed = false;
+
+	private boolean released = false;
+
+	private ConnectionReleasingInputStream inputStream;
+
+	private final Throwable instantiationStackTrace = new Throwable("This is the instantiation stack trace of the StdHttpResponse instance");
 
 	public static StdHttpResponse of(org.apache.http.HttpResponse rsp, HttpUriRequest httpRequest) {
 		return new StdHttpResponse(rsp.getEntity(), rsp.getStatusLine(), httpRequest, rsp.getFirstHeader("ETag"));
@@ -72,14 +76,17 @@ public class StdHttpResponse implements HttpResponse {
 	}
 
 	/**
-	 * TODO : add IOException to method signature 
- 	 */
+	 * TODO : add IOException to method signature
+	 */
 	public InputStream getContent() {
-		try {
-			return entity.getContent();
-		} catch (IOException e) {
-			throw Exceptions.propagate(e);
+		if (inputStream == null) {
+			try {
+				inputStream = new ConnectionReleasingInputStream(entity.getContent());
+			} catch (IOException e) {
+				throw Exceptions.propagate(e);
+			}
 		}
+		return inputStream;
 	}
 
 	public String getETag() {
@@ -91,16 +98,12 @@ public class StdHttpResponse implements HttpResponse {
 	}
 
 	public void releaseConnection() {
-		InputStream content = null;
+		ConnectionReleasingInputStream content = null;
 		try {
-			content = entity.getContent();
-			// this will consume the content
-			IOUtils.copy(content, NullOutputStream.NULL_OUTPUT_STREAM);
-		} catch (IOException e) {
-			LOG.warn("IOException while getting and consuming HttpEntity's content in order to close it.", e);
+			content = (ConnectionReleasingInputStream) getContent();
 		} finally {
 			IOUtils.closeQuietly(content);
-			closed = true;
+			released = true;
 		}
 	}
 
@@ -111,24 +114,62 @@ public class StdHttpResponse implements HttpResponse {
 	public String toString() {
 		return status.getStatusCode() + ":" + status.getReasonPhrase();
 	}
-	
+
 	@Override
 	protected void finalize() {
-		if (!closed) {
-			LOG.warn("StdHttpResponse was not closed properly. In order to avoid leaking connections, don't forget to call releaseConnection() on every instance of StdHttpResponse");
+		if (!released) {
+			LOG.warn("StdHttpResponse was not released properly. In order to avoid leaking connections, don't forget to call releaseConnection() on every instance of StdHttpResponse", instantiationStackTrace);
 		}
 	}
-	
-	private class ConnectionReleasingInputStream extends FilterInputStream {
+
+	private static class ConnectionReleasingInputStream extends FilterInputStream {
+
+		private final Throwable instantiationStackTrace = new Throwable("This is the instantiation stack trace of the ConnectionReleasingInputStream instance");
+
+		private boolean closed = false;
 
 		private ConnectionReleasingInputStream(InputStream src) {
 			super(src);
 		}
 
+		@Override
 		public void close() throws IOException {
-			releaseConnection();
-			IOUtils.closeQuietly(in);
+			try {
+				consumeContent();
+			} finally {
+				closeInnerInputStream();
+			}
 		}
+
+		public void consumeContent() throws IOException {
+			if (!closed) {
+				if (in != null) {
+					// this will consume the content
+					int unconsumedLength = IOUtils.copy(in, NullOutputStream.NULL_OUTPUT_STREAM);
+					if (unconsumedLength > 0) {
+						String warningMessage = "content was not consumed entirely by the application. Make sure you consume the content entirely before closing it : " + unconsumedLength;
+						LOG.warn(warningMessage, new RuntimeException(warningMessage));
+					}
+				}
+			}
+		}
+
+		public void closeInnerInputStream() {
+			IOUtils.closeQuietly(in);
+			closed = true;
+		}
+
+		public boolean isClosed() {
+			return closed;
+		}
+
+		@Override
+		protected void finalize() {
+			if (!closed) {
+				LOG.warn("ConnectionReleasingInputStream was not closed properly. In order to avoid leaking connections, don't forget to call close() on every instance of InputStream retrieved on the StdHttpResponse", instantiationStackTrace);
+			}
+		}
+
 
 	}
 
