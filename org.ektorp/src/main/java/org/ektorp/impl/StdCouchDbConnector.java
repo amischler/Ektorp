@@ -63,7 +63,7 @@ public class StdCouchDbConnector implements CouchDbConnector {
 
     private final ObjectMapperFactory objectMapperFactory;
 
-    protected CouchDbConnectorResponseHandlerFactory couchDbConnectorResponseHandlerFactory;
+    private CouchDbConnectorResponseHandlerFactory couchDbConnectorResponseHandlerFactory;
 
     private final static Options EMPTY_OPTIONS = new Options();
 
@@ -134,6 +134,10 @@ public class StdCouchDbConnector implements CouchDbConnector {
         return objectMapperFactory;
     }
 
+    public CouchDbConnectorResponseHandlerFactory getCouchDbConnectorResponseHandlerFactory() {
+        return couchDbConnectorResponseHandlerFactory;
+    }
+    
     public void setCouchDbConnectorResponseHandlerFactory(CouchDbConnectorResponseHandlerFactory value) {
         this.couchDbConnectorResponseHandlerFactory = value;
     }
@@ -230,7 +234,7 @@ public class StdCouchDbConnector implements CouchDbConnector {
 
     @Override
     public PurgeResult purge(Map<String, List<String>> revisionsToPurge) {
-        ResponseCallback<PurgeResult> responseCallback = couchDbConnectorResponseHandlerFactory.getClassInstanceResponseHandler(PurgeResult.class);
+        ResponseCallback<PurgeResult> responseCallback = getCouchDbConnectorResponseHandlerFactory().getClassInstanceResponseHandler(PurgeResult.class);
         return restTemplate.post(dbURI.append("_purge").toString(), serializeToJson(revisionsToPurge), responseCallback);
     }
 
@@ -245,7 +249,7 @@ public class StdCouchDbConnector implements CouchDbConnector {
         assertDocIdHasValue(id);
         URI uri = dbURI.append(id);
         applyOptions(options, uri);
-        ResponseCallback<T> responseCallback = couchDbConnectorResponseHandlerFactory.getClassInstanceResponseHandler(c);
+        ResponseCallback<T> responseCallback = getCouchDbConnectorResponseHandlerFactory().getClassInstanceResponseHandler(c);
         return restTemplate.get(uri.toString(), responseCallback);
     }
 
@@ -363,7 +367,7 @@ public class StdCouchDbConnector implements CouchDbConnector {
         Assert.notNull(o, "Document cannot be null");
         final String id = Documents.getId(o);
         assertDocIdHasValue(id);
-        EntityUpdateResponseHandler entityUpdateResponseHandler = couchDbConnectorResponseHandlerFactory.getEntityUpdateResponseHandler(o, id);
+        EntityUpdateResponseHandler entityUpdateResponseHandler = getCouchDbConnectorResponseHandlerFactory().getEntityUpdateResponseHandler(o, id);
         restTemplate.put(dbURI.append(id).toString(), serializeToJson(o), entityUpdateResponseHandler);
     }
 
@@ -488,7 +492,7 @@ public class StdCouchDbConnector implements CouchDbConnector {
 
     @Override
     public DbInfo getDbInfo() {
-        ResponseCallback<DbInfo> responseCallback = couchDbConnectorResponseHandlerFactory.getClassInstanceResponseHandler(DbInfo.class);
+        ResponseCallback<DbInfo> responseCallback = getCouchDbConnectorResponseHandlerFactory().getClassInstanceResponseHandler(DbInfo.class);
         return restTemplate.get(dbURI.toString(), responseCallback);
     }
 
@@ -498,7 +502,7 @@ public class StdCouchDbConnector implements CouchDbConnector {
         String uri = dbURI.append("_design").append(designDocId)
                 .append("_info").toString();
 
-        ResponseCallback<DesignDocInfo> responseCallback = couchDbConnectorResponseHandlerFactory.getClassInstanceResponseHandler(DesignDocInfo.class);
+        ResponseCallback<DesignDocInfo> responseCallback = getCouchDbConnectorResponseHandlerFactory().getClassInstanceResponseHandler(DesignDocInfo.class);
         return restTemplate.get(uri, responseCallback);
     }
 
