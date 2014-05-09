@@ -81,7 +81,7 @@ public class StdHttpResponse implements HttpResponse {
 	public InputStream getContent() {
 		if (inputStream == null) {
 			try {
-				inputStream = new ConnectionReleasingInputStream(entity.getContent());
+				inputStream = new ConnectionReleasingInputStream(entity.getContent(), this);
 			} catch (IOException e) {
 				throw Exceptions.propagate(e);
 			}
@@ -102,7 +102,11 @@ public class StdHttpResponse implements HttpResponse {
 		try {
 			content = (ConnectionReleasingInputStream) getContent();
 		} finally {
-			IOUtils.closeQuietly(content);
+			if (content != null) {
+				if (!content.isClosed()) {
+					IOUtils.closeQuietly(content);
+				}
+			}
 			released = true;
 		}
 	}
@@ -130,8 +134,11 @@ public class StdHttpResponse implements HttpResponse {
 
 		private boolean eof = false;
 
-		private ConnectionReleasingInputStream(InputStream src) {
+		private final HttpResponse httpResponse;
+
+		private ConnectionReleasingInputStream(InputStream src, HttpResponse httpResponse) {
 			super(src);
+			this.httpResponse = httpResponse;
 		}
 
 		@Override
@@ -142,7 +149,7 @@ public class StdHttpResponse implements HttpResponse {
 		}
 
 		@Override
-		public int read(byte b[], int off, int len) throws IOException {
+		public int read(byte[] b, int off, int len) throws IOException {
 			int read = super.read(b, off, len);
 			eof = (read < len);
 			return read;
@@ -155,11 +162,14 @@ public class StdHttpResponse implements HttpResponse {
 			} finally {
 				closeInnerInputStream();
 			}
+			if (httpResponse != null) {
+				httpResponse.releaseConnection();
+			}
 		}
 
 		public void consumeContent() throws IOException {
-			if (!eof) {
-				if (!closed) {
+			if (!closed) {
+				if (!eof) {
 					if (in != null) {
 						// this will consume the content
 						int unconsumedLength = IOUtils.copy(in, NullOutputStream.NULL_OUTPUT_STREAM);
