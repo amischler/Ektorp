@@ -63,6 +63,8 @@ public class StdCouchDbConnector implements CouchDbConnector {
 
     private final ObjectMapperFactory objectMapperFactory;
 
+    protected CouchDbConnectorResponseHandlerFactory couchDbConnectorResponseHandlerFactory;
+
     private final static Options EMPTY_OPTIONS = new Options();
 
     public StdCouchDbConnector(String databaseName, CouchDbInstance dbInstance) {
@@ -105,6 +107,8 @@ public class StdCouchDbConnector implements CouchDbConnector {
         attachmentCouchDbConnector = new StdAttachmentCouchDbConnector(dbURI, restTemplate, revisionHandler);
         
         inputStreamBulkExecutor = new InputStreamWrapperBulkExecutor(dbURI, restTemplate, objectMapper);
+
+        couchDbConnectorResponseHandlerFactory = new DefaultCouchDbConnectorResponseHandlerFactory(objectMapper);
     }
 
     public void setLocalBulkBuffer(LocalBulkBuffer localBulkBuffer) {
@@ -128,6 +132,10 @@ public class StdCouchDbConnector implements CouchDbConnector {
 
     public ObjectMapperFactory getObjectMapperFactory() {
         return objectMapperFactory;
+    }
+
+    public void setCouchDbConnectorResponseHandlerFactory(CouchDbConnectorResponseHandlerFactory value) {
+        this.couchDbConnectorResponseHandlerFactory = value;
     }
 
     @Override
@@ -222,7 +230,7 @@ public class StdCouchDbConnector implements CouchDbConnector {
 
     @Override
     public PurgeResult purge(Map<String, List<String>> revisionsToPurge) {
-        ResponseCallback<PurgeResult> responseCallback = getClassInstanceResponseHandler(PurgeResult.class);
+        ResponseCallback<PurgeResult> responseCallback = couchDbConnectorResponseHandlerFactory.getClassInstanceResponseHandler(PurgeResult.class);
         return restTemplate.post(dbURI.append("_purge").toString(), serializeToJson(revisionsToPurge), responseCallback);
     }
 
@@ -237,7 +245,7 @@ public class StdCouchDbConnector implements CouchDbConnector {
         assertDocIdHasValue(id);
         URI uri = dbURI.append(id);
         applyOptions(options, uri);
-        ResponseCallback<T> responseCallback = getClassInstanceResponseHandler(c);
+        ResponseCallback<T> responseCallback = couchDbConnectorResponseHandlerFactory.getClassInstanceResponseHandler(c);
         return restTemplate.get(uri.toString(), responseCallback);
     }
 
@@ -355,7 +363,7 @@ public class StdCouchDbConnector implements CouchDbConnector {
         Assert.notNull(o, "Document cannot be null");
         final String id = Documents.getId(o);
         assertDocIdHasValue(id);
-        EntityUpdateResponseHandler entityUpdateResponseHandler = getEntityUpdateResponseHandler(o, id);
+        EntityUpdateResponseHandler entityUpdateResponseHandler = couchDbConnectorResponseHandlerFactory.getEntityUpdateResponseHandler(o, id);
         restTemplate.put(dbURI.append(id).toString(), serializeToJson(o), entityUpdateResponseHandler);
     }
 
@@ -480,7 +488,7 @@ public class StdCouchDbConnector implements CouchDbConnector {
 
     @Override
     public DbInfo getDbInfo() {
-        ResponseCallback<DbInfo> responseCallback = getClassInstanceResponseHandler(DbInfo.class);
+        ResponseCallback<DbInfo> responseCallback = couchDbConnectorResponseHandlerFactory.getClassInstanceResponseHandler(DbInfo.class);
         return restTemplate.get(dbURI.toString(), responseCallback);
     }
 
@@ -490,7 +498,7 @@ public class StdCouchDbConnector implements CouchDbConnector {
         String uri = dbURI.append("_design").append(designDocId)
                 .append("_info").toString();
 
-        ResponseCallback<DesignDocInfo> responseCallback = getClassInstanceResponseHandler(DesignDocInfo.class);
+        ResponseCallback<DesignDocInfo> responseCallback = couchDbConnectorResponseHandlerFactory.getClassInstanceResponseHandler(DesignDocInfo.class);
         return restTemplate.get(uri, responseCallback);
     }
 
@@ -795,13 +803,6 @@ public class StdCouchDbConnector implements CouchDbConnector {
 		restTemplate.put(uri.toString(), document, "application/json", length);
 	}
 
-    protected EntityUpdateResponseHandler getEntityUpdateResponseHandler(Object o, String id) {
-        return new EntityUpdateResponseHandler(objectMapper, o, id);
-    }
-
-    protected <T> ResponseCallback<T> getClassInstanceResponseHandler(final Class<T> c) {
-        return new ClassInstanceResponseHandler(objectMapper, c);
-    }
 
 }
 
