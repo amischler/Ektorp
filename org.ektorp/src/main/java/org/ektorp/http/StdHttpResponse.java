@@ -139,10 +139,16 @@ public class StdHttpResponse implements HttpResponse {
 		private ConnectionReleasingInputStream(InputStream src, HttpResponse httpResponse) {
 			super(src);
 			this.httpResponse = httpResponse;
+			if (src == null) {
+				eof = true;
+			}
 		}
 
 		@Override
 		public int read() throws IOException {
+			if (eof) {
+				return -1;
+			}
 			int read = super.read();
 			eof = (read == -1);
 			return read;
@@ -150,8 +156,11 @@ public class StdHttpResponse implements HttpResponse {
 
 		@Override
 		public int read(byte[] b, int off, int len) throws IOException {
+			if (eof) {
+				return -1;
+			}
 			int read = super.read(b, off, len);
-			eof = (read < len);
+			eof = (read == -1);
 			return read;
 		}
 
@@ -172,9 +181,11 @@ public class StdHttpResponse implements HttpResponse {
 				if (!eof) {
 					if (in != null) {
 						// this will consume the content
-						int unconsumedLength = IOUtils.copy(in, NullOutputStream.NULL_OUTPUT_STREAM);
-						String warningMessage = "content was not consumed entirely by the application. Make sure you consume the content entirely before closing it : " + unconsumedLength;
-						LOG.warn(warningMessage, new RuntimeException(warningMessage));
+						int unconsumedLength = IOUtils.copy(this, NullOutputStream.NULL_OUTPUT_STREAM);
+						if (unconsumedLength > 0) {
+							String warningMessage = "content was not consumed entirely by the application. Make sure you consume the content entirely before closing it : " + unconsumedLength;
+							LOG.warn(warningMessage, new RuntimeException(warningMessage));
+						}
 					}
 				}
 			}
