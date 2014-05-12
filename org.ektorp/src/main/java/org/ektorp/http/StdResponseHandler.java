@@ -3,6 +3,7 @@ package org.ektorp.http;
 import java.io.*;
 
 import org.apache.commons.io.*;
+import org.apache.commons.io.output.NullOutputStream;
 import org.ektorp.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,6 +19,24 @@ import com.fasterxml.jackson.databind.node.NullNode;
 public class StdResponseHandler<T> implements ResponseCallback<T> {
 
 	private final static ObjectMapper MAPPER = new ObjectMapper();
+
+	public static void consumeInputStreamQuietly(HttpResponse hr) {
+		InputStream content = null;
+		try {
+			content = hr.getContent();
+			if (content != null) {
+				// this will consume the content
+				try {
+					IOUtils.copy(content, NullOutputStream.NULL_OUTPUT_STREAM);
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+			}
+		} finally {
+			IOUtils.closeQuietly(content);
+		}
+	}
+
 	/**
 	 * Creates an DbAccessException which specific type is determined by the response code in the http response.
 	 * @param hr
