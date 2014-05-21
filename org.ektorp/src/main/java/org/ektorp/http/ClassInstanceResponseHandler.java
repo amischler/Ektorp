@@ -5,6 +5,9 @@ import org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.Charset;
 
 public class ClassInstanceResponseHandler extends StdResponseHandler {
 
@@ -15,6 +18,8 @@ public class ClassInstanceResponseHandler extends StdResponseHandler {
     private Class clazz;
 
     private ObjectMapper objectMapper;
+	
+	private Charset charset = Charset.forName("UTF-8");
 
     public ClassInstanceResponseHandler(ObjectMapper objectMapper) {
         this.setObjectMapper(objectMapper);
@@ -32,10 +37,15 @@ public class ClassInstanceResponseHandler extends StdResponseHandler {
     @Override
     public Object success(HttpResponse hr) throws IOException {
         InputStream content = null;
+        Reader contentReader = null;
         try {
             content = hr.getContent();
-            return getObjectMapper().readValue(content, getClazz());
+            // providing the charset explicitly will save Jackson from having to auto detect the charset
+            // that charset will most likely be the same for every document in a given database
+            contentReader = new InputStreamReader(content, charset);
+            return getObjectMapper().readValue(contentReader, getClazz());
         } finally {
+            IOUtils.closeQuietly(contentReader);
             IOUtils.closeQuietly(content);
         }
     }
@@ -63,5 +73,13 @@ public class ClassInstanceResponseHandler extends StdResponseHandler {
 
     public void setObjectMapper(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+    }
+
+    public Charset getCharset() {
+        return charset;
+    }
+
+    public void setCharset(Charset charset) {
+        this.charset = charset;
     }
 }
