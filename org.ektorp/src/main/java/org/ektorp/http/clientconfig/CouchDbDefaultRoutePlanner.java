@@ -3,7 +3,9 @@ package org.ektorp.http.clientconfig;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
+import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.conn.routing.HttpRoute;
+import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.conn.DefaultRoutePlanner;
 import org.apache.http.impl.conn.DefaultSchemePortResolver;
 import org.apache.http.protocol.HttpContext;
@@ -14,10 +16,14 @@ import org.slf4j.LoggerFactory;
 public class CouchDbDefaultRoutePlanner extends DefaultRoutePlanner {
 
 	private final static Logger LOG = LoggerFactory.getLogger(CouchDbDefaultRoutePlanner.class);
-	
+
 	private String serverHostName = "localhost";
 
 	private Integer serverHostPort = 5984;
+
+	private String username;
+
+	private String password;
 
 	public CouchDbDefaultRoutePlanner() {
 		this(DefaultSchemePortResolver.INSTANCE);
@@ -39,6 +45,14 @@ public class CouchDbDefaultRoutePlanner extends DefaultRoutePlanner {
 		} else {
 			target = host;
 		}
+
+		if (username != null && password != null) {
+			UsernamePasswordCredentials usernamePasswordCredentials = new UsernamePasswordCredentials(username, password);
+			LOG.info("usernamePasswordCredentials = {}", usernamePasswordCredentials);
+			request.addHeader(new BasicScheme().authenticate(usernamePasswordCredentials, request));
+		}
+		LOG.info("target = " + target);
+
 		return super.determineRoute(target, request, context);
 	}
 
@@ -50,11 +64,27 @@ public class CouchDbDefaultRoutePlanner extends DefaultRoutePlanner {
 		return serverHostPort;
 	}
 
+	public String getUsername() {
+		return username;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
 	public void setServerHostName(String serverHostName) {
 		this.serverHostName = serverHostName;
 	}
 
 	public void setServerHostPort(Integer serverHostPort) {
 		this.serverHostPort = serverHostPort;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
 	}
 }

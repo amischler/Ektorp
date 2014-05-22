@@ -7,17 +7,21 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.ektorp.http.PreemptiveAuthRequestInterceptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class CredentialsProviderConfigurer {
-	
+
 	public static class DefaultCredentialsProvider implements CredentialsProvider {
 
+		private final static Logger LOG = LoggerFactory.getLogger(DefaultCredentialsProvider.class);
+
 		private final Map<AuthScope, Credentials> credentialsMap = new ConcurrentHashMap<AuthScope, Credentials>();
-		
+
 		public DefaultCredentialsProvider() {
 			super();
 		}
@@ -29,15 +33,31 @@ public class CredentialsProviderConfigurer {
 
 		@Override
 		public Credentials getCredentials(AuthScope authScope) {
-			return credentialsMap.get(authScope);
+			Credentials result = credentialsMap.get(authScope);
+			if (result == null) {
+				result = credentialsMap.get(new AuthScope(authScope.getHost(), authScope.getPort(), AuthScope.ANY_REALM));
+			}
+			LOG.info("getCredentials({}) : result = {}", new Object[]{authScope, result});
+			return result;
 		}
 
 		@Override
 		public void clear() {
 			credentialsMap.clear();
 		}
+
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder();
+			builder.append(this.getClass().getName()).append("{");
+			builder.append("credentialsMap=").append(credentialsMap);
+			builder.append("}");
+			return builder.toString();
+		}
+
 	}
 
+	private final static Logger LOG = LoggerFactory.getLogger(CredentialsProviderConfigurer.class);
 
 	private String username;
 
@@ -60,7 +80,9 @@ public class CredentialsProviderConfigurer {
 		}
 		AuthScope authScope = new AuthScope(host, port, AuthScope.ANY_REALM);
 		UsernamePasswordCredentials usernamePasswordCredentials = new UsernamePasswordCredentials(username, password);
+		LOG.info("authScope = {}, usernamePasswordCredentials = {}", new Object[]{authScope, usernamePasswordCredentials});
 		credentialsProvider.setCredentials(authScope, usernamePasswordCredentials);
+		LOG.info("credentialsProvider = {}", credentialsProvider);
 	}
 
 	public void configure(DefaultHttpClient client) {
