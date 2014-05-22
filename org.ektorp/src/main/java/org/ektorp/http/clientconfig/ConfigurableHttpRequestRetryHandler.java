@@ -1,6 +1,7 @@
 package org.ektorp.http.clientconfig;
 
 import org.apache.commons.httpclient.NoHttpResponseException;
+import org.apache.http.ConnectionClosedException;
 import org.apache.http.HttpEntityEnclosingRequest;
 import org.apache.http.HttpRequest;
 import org.apache.http.client.HttpRequestRetryHandler;
@@ -58,6 +59,9 @@ public class ConfigurableHttpRequestRetryHandler implements HttpRequestRetryHand
 		} else if (exception instanceof SSLHandshakeException) {
 			// Do not retry on SSL handshake exception
 			return false;
+		} else if (exception instanceof ConnectionClosedException) {
+			// Caused by: org.apache.http.ConnectionClosedException: Premature end of Content-Length delimited message body (expected: 88; received: 0 
+			return true;
 		}
 
 		HttpRequest request = (HttpRequest) context.getAttribute(ExecutionContext.HTTP_REQUEST);
