@@ -45,13 +45,14 @@ public class CouchDbDefaultRoutePlanner extends DefaultRoutePlanner {
 		} else {
 			target = host;
 		}
+		LOG.trace("target = {}", target);
 
 		if (username != null && password != null) {
 			UsernamePasswordCredentials usernamePasswordCredentials = new UsernamePasswordCredentials(username, password);
-			LOG.info("usernamePasswordCredentials = {}", usernamePasswordCredentials);
+			LOG.trace("usernamePasswordCredentials = {}", usernamePasswordCredentials);
 			request.addHeader(new BasicScheme().authenticate(usernamePasswordCredentials, request));
 		}
-		LOG.info("target = " + target);
+		
 
 		return super.determineRoute(target, request, context);
 	}
