@@ -3,20 +3,22 @@ package org.ektorp.impl;
 import org.apache.commons.io.IOUtils;
 import org.ektorp.http.HttpResponse;
 
-import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
 public class ResponseOnFileStub implements HttpResponse {
 
-	public static class CloseMonitoringInputStream extends FilterInputStream {
+	public static class CloseMonitoringInputStream extends InputStream {
 
 		private boolean closed = false;
 
 		private boolean eof = false;
 
+		private final InputStream in;
+
 		public CloseMonitoringInputStream(InputStream in) {
-			super(in);
+			super();
+			this.in = in;
 		}
 
 		public boolean isClosed() {
@@ -29,21 +31,21 @@ public class ResponseOnFileStub implements HttpResponse {
 
 		@Override
 		public int read() throws IOException {
-			int read = super.read();
+			int read = in.read();
 			eof = (read == -1);
 			return read;
 		}
 
 		@Override
 		public int read(byte b[], int off, int len) throws IOException {
-			int read = super.read(b, off, len);
+			int read = in.read(b, off, len);
 			eof = (read < len);
 			return read;
 		}
 
 		@Override
 		public void close() throws IOException {
-			super.close();
+			in.close();
 			this.closed = true;
 		}
 
