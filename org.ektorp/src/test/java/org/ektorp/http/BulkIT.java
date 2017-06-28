@@ -1,5 +1,6 @@
 package org.ektorp.http;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -11,16 +12,16 @@ import org.ektorp.impl.StdCouchDbInstance;
 import org.ektorp.impl.StdObjectMapperFactory;
 import org.ektorp.impl.StreamedCouchDbConnector;
 import org.ektorp.support.CouchDbDocument;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.StringReader;
 import java.util.*;
+
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /* throws:
 Exception in thread "main" org.ektorp.DbAccessException: java.net.SocketException: Connection reset
@@ -50,10 +51,9 @@ Caused by: java.net.SocketException: Connection reset
         at org.ektorp.http.StdHttpClient.executeRequest(StdHttpClient.java:96)
         ... 5 more
 */
-@Ignore
-public class BulkTest {
+public class BulkIT {
 
-    private final static Logger LOG = LoggerFactory.getLogger(StdCouchDbInstance.class);
+    private final static Logger LOG = LoggerFactory.getLogger(BulkIT.class);
 
     private HttpClient httpClient;
 
@@ -67,7 +67,7 @@ public class BulkTest {
 
     private boolean createDatabaseIfNeeded = true;
 
-    private boolean deleteDatabaseIfNeeded = false;
+    private boolean deleteDatabaseIfNeeded = true;
 
     @Before
     public void setUp() {
@@ -134,6 +134,26 @@ public class BulkTest {
         }
     }
 
+	// TODO : move this test to an other test class
+	// TODO : add assertion on whether on not the content was fully consumed
+	@Test
+	public void shouldConsumeTheFullReponseContentOnQueryViewWithType() {
+		ViewQuery query = new ViewQuery().allDocs().includeDocs(true);
+		List<TestDocumentBean> result = stdCouchDbConnector.queryView(query, TestDocumentBean.class);
+		assertNotNull(result);
+		LOG.info("result.size() = " + result.size());
+	}
+
+	// TODO : move this test to an other test class
+	// TODO : add assertion on whether on not the content was fully consumed
+	@Test
+	public void shouldConsumeTheFullReponseContentOnQueryViewWithoutType() {
+		ViewQuery query = new ViewQuery().allDocs().includeDocs(true);
+		ViewResult result = stdCouchDbConnector.queryView(query);
+		assertNotNull(result);
+		LOG.info("result.size() = " + result.getRows().size());
+	}
+
     @Test
     public void shouldDoUpdateInBulkWithOneSmallInputStreamWithStdCouchDbConnector() throws Exception {
         doUpdateInBulkWithOneSmallInputStream(stdCouchDbConnector);
@@ -165,7 +185,7 @@ public class BulkTest {
     }
 
     public void doUpdateInBulkWithOneElement(CouchDbConnector db) throws Exception {
-        final int iterationsCount = 100;
+        final int iterationsCount = 10;
 
         // create document "myid"
         try {
@@ -192,8 +212,8 @@ public class BulkTest {
 
 
     public void doUpdateInBulkWithManyElements(CouchDbConnector db) {
-        final int iterationsCount = 20;
-        final int elementsCount = 200;
+        final int iterationsCount = 10;
+        final int elementsCount = 20;
 
         final List<String> allDocIds = new ArrayList<String>();
 
@@ -240,11 +260,12 @@ public class BulkTest {
 
             List<TestDocumentBean> docList = db.queryView(q, TestDocumentBean.class);
             for (TestDocumentBean b : docList) {
+                Assert.assertNotNull(b.firstName);
+                Assert.assertNotNull(b.getLastName());
+                Assert.assertNotNull(b.dateOfBirth);
                 // check version is as expected
-                if (b.version != i - 1) {
-                    throw new IllegalStateException("Bean state is not as expected : " + b);
-                }
-                b.version = i;
+                Assert.assertEquals("Bean state is not as expected", i - 1, b.getVersion());
+                b.setVersion(i);
             }
 
             long bulkOpStart = System.currentTimeMillis();
@@ -258,7 +279,7 @@ public class BulkTest {
         List<TestDocumentBean> docList = db.queryView(q, TestDocumentBean.class);
         for (TestDocumentBean b : docList) {
             // check version is as expected
-            if (b.version != iterationsCount) {
+            if (b.getVersion() != iterationsCount) {
                 throw new IllegalStateException("Bean state is not as expected : " + b);
             }
         }
@@ -268,7 +289,7 @@ public class BulkTest {
     }
 
     public void doUpdateInBulkWithOneSmallInputStream(CouchDbConnector db) throws Exception {
-        final int iterationsCount = 100;
+        final int iterationsCount = 10;
 
         // create or update the document, with initial "i" value of 0
         final String id = "myid";
@@ -313,11 +334,12 @@ public class BulkTest {
     }
 
 
+	@JsonIgnoreProperties(ignoreUnknown = true)
     public static class TestDocumentBean extends CouchDbDocument {
         private String lastName;
         private String firstName;
         private Long dateOfBirth;
-        private int version;
+        private int version = -1;
 
         public TestDocumentBean() {
 
@@ -328,6 +350,38 @@ public class BulkTest {
             this.firstName = firstName;
             this.dateOfBirth = dateOfBirth;
             this.version = version;
+        }
+
+        public int getVersion() {
+            return version;
+        }
+
+        public void setVersion(int version) {
+            this.version = version;
+        }
+
+        public String getFirstName() {
+            return firstName;
+        }
+
+        public void setFirstName(String firstName) {
+            this.firstName = firstName;
+        }
+
+        public Long getDateOfBirth() {
+            return dateOfBirth;
+        }
+
+        public void setDateOfBirth(Long dateOfBirth) {
+            this.dateOfBirth = dateOfBirth;
+        }
+
+        public String getLastName() {
+            return lastName;
+        }
+
+        public void setLastName(String lastName) {
+            this.lastName = lastName;
         }
     }
 

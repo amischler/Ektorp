@@ -65,13 +65,13 @@ public class ViewQuery {
 			}
 		}
 
-		public Object asDecoded() {
-			if (isRaw) {
-				return parseJson(rawKey);
-			} else {
-				return key;
-			}
-		}
+        public Object asDecoded() {
+            if (isRaw) {
+                return parseJson(rawKey);
+            } else {
+                return key;
+            }
+        }
 
 		public void copyTo(KeyOrRawKey other) {
 			if (isRaw) {
@@ -80,9 +80,9 @@ public class ViewQuery {
 				other.setKey(key);
 			}
 		}
-		
+
 	}
-	
+
 
 	private final static ObjectMapper DEFAULT_MAPPER = new StdObjectMapperFactory().createObjectMapper();
 	private final static String ALL_DOCS_VIEW_NAME = "_all_docs";
@@ -750,12 +750,12 @@ public class ViewQuery {
 		copy.skip = skip;
 		copy.staleOk = staleOk;
 		copy.startDocId = startDocId;
-		startKey.copyTo(copy.startKey);
+		startKey.copyTo(startKey);
 		copy.updateSeq = updateSeq;
 		copy.viewName = viewName;
 		return copy;
 	}
-	
+
 	private void appendQueryParams(URI query) {
 		for (Map.Entry<String, String> param : queryParams.entrySet()) {
 			query.param(param.getKey(), param.getValue());
