@@ -750,7 +750,7 @@ public class ViewQuery {
 		copy.skip = skip;
 		copy.staleOk = staleOk;
 		copy.startDocId = startDocId;
-		startKey.copyTo(startKey);
+		startKey.copyTo(copy.startKey);
 		copy.updateSeq = updateSeq;
 		copy.viewName = viewName;
 		return copy;
